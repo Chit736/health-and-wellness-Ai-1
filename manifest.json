@@ -1,12 +1,13 @@
 {
   "name": "Health & Wellness Global",
-  "short_name": "HealthAI",
-  "description": "AI-powered health and wellness platform",
+  "short_name": "HealthAI", 
+  "description": "AI Health and Wellness Platform",
   "start_url": "/health-and-wellness-Ai-1/",
   "display": "standalone",
   "background_color": "#2E8B57",
   "theme_color": "#2E8B57",
-  "orientation": "portrait-primary",
+  "orientation": "any",
+  "scope": "/health-and-wellness-Ai-1/",
   "icons": [
     {
       "src": "icons/icon-192.png",
@@ -14,9 +15,10 @@
       "type": "image/png"
     },
     {
-      "src": "icons/icon-512.png",
+      "src": "icons/icon-512.png", 
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "categories": ["health", "medical", "productivity"]
 }
