@@ -1,7 +1,7 @@
 {
-  "name": "Health & Wellness Global",
+  "name": "Health & Wellness Global - AI Platform",
   "short_name": "HealthAI",
-  "description": "AI Health and Wellness Platform", 
+  "description": "Complete AI Health and Wellness Platform",
   "start_url": "/health-and-wellness-Ai-1/",
   "display": "standalone",
   "background_color": "#2E8B57",
@@ -18,5 +18,6 @@
       "sizes": "512x512", 
       "type": "image/png"
     }
-  ]
+  ],
+  "categories": ["health", "medical", "productivity"]
 }
