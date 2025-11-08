@@ -594,6 +594,23 @@
         .payment-method.paypal .payment-icon {
             color: var(--paypal-blue);
         }
+        <!-- Telegram AI Assistant Section -->
+<div class="section-title" style="margin-top: 3rem;">
+    <h2>💬 24/7 AI Health Assistant</h2>
+    <p>Get instant health advice through Telegram - Available 24 hours</p>
+</div>
+
+<div class="billion-feature-grid">
+    <div class="billion-feature-card">
+        <i class="fab fa-telegram feature-icon" style="color: #0088cc;"></i>
+        <h3>Telegram AI Assistant</h3>
+        <p>Chat with our AI health advisor directly on Telegram. Get personalized health advice anytime, anywhere.</p>
+        <button class="cta-button" onclick="openTelegramBot()" style="background: #0088cc;">
+            <i class="fab fa-telegram"></i>
+            Start Chat on Telegram
+        </button>
+    </div>
+</div>
 
         /* ===== CARD STYLES ===== */
         .card {
@@ -3210,6 +3227,26 @@
             showNotification(`Playing: ${title}`, 'info');
         }
 
+// ===== TELEGRAM BOT INTEGRATION =====
+function openTelegramBot() {
+    const botUsername = "HealthWellnessAI_bot";
+    const welcomeMessage = "Hello! I need health advice from Health & Wellness Global platform";
+    window.open(`https://t.me/${botUsername}?start=${encodeURIComponent(welcomeMessage)}`, '_blank');
+    showNotification('Opening Telegram app...', 'info');
+}
+
+function initializeTelegramWidget() {
+    const chatButton = document.createElement('div');
+    chatButton.innerHTML = `
+        <div id="telegramChatWidget" style="position: fixed; bottom: 100px; right: 20px; z-index: 9999;">
+            <button onclick="openTelegramBot()" style="background: #0088cc; color: white; border: none; padding: 15px 20px; border-radius: 25px; cursor: pointer; font-size: 14px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 8px;">
+                <i class="fab fa-telegram"></i>
+                💬 AI Health Chat
+            </button>
+        </div>
+    `;
+    document.body.appendChild(chatButton);
+}
         // ===== UTILITY FUNCTIONS =====
         function showLoading(show = true) {
             const loadingOverlay = document.getElementById('globalLoading');
@@ -4335,6 +4372,51 @@
                 window.scrollTo(0, parseInt(scrollPosition));
                 localStorage.removeItem('scrollPosition');
             }
+            // ===== TELEGRAM BOT INTEGRATION =====
+function openTelegramBot() {
+    const botUsername = "HealthWellnessAI_bot";
+    const welcomeMessage = "Hello! I need health advice from Health & Wellness Global platform";
+    window.open(`https://t.me/${botUsername}?start=${encodeURIComponent(welcomeMessage)}`, '_blank');
+    showNotification('Opening Telegram app...', 'info');
+}
+
+function initializeTelegramWidget() {
+    const chatButton = document.createElement('div');
+    chatButton.innerHTML = `
+        <div id="telegramChatWidget" style="position: fixed; bottom: 100px; right: 20px; z-index: 9999;">
+            <button onclick="openTelegramBot()" style="
+                background: #0088cc;
+                color: white;
+                border: none;
+                padding: 15px 20px;
+                border-radius: 25px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: bold;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                transition: all 0.3s ease;
+            " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                <i class="fab fa-telegram"></i>
+                💬 AI Health Chat
+            </button>
+        </div>
+    `;
+    document.body.appendChild(chatButton);
+}
+
+// ===== INITIALIZATION =====
+window.onload = function() {
+    // Initialize Telegram Widget
+    initializeTelegramWidget();
+    
+    // Show welcome message
+    setTimeout(() => {
+        showNotification('Welcome to Health & Wellness Global! 🚀', 'success');
+    }, 1000);
+};
             
             // Show welcome message
             setTimeout(() => {
