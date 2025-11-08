@@ -12,8 +12,11 @@ logging.basicConfig(
 )
 
 # Bot Token - BotFather ကရတဲ့ Token နဲ့အစားထိုးပါ
-BOT_TOKEN = os.environ.get('BOT_TOKEN', 'YOUR_BOT_TOKEN_HERE')
-
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
+if not BOT_TOKEN:
+    print("❌ ERROR: BOT_TOKEN environment variable is not set!")
+    print("Please set your Telegram Bot Token in Render.com environment variables")
+    exit(1)
 # Health Knowledge Base
 HEALTH_KNOWLEDGE = {
     'en': {
