@@ -3801,29 +3801,37 @@ function initializeTelegramWidget() {
         }
 
         // NEW AI DROPDOWN FUNCTIONS
-        function getAIAdviceFromDropdowns() {
-            const healthCategory = document.getElementById('healthCategory').value;
-            const infoType = document.getElementById('infoType').value;
-            
-            if (!healthCategory) {
-                showNotification('Please select a health category', 'warning');
-                return;
-            }
-            
-            if (!infoType) {
-                showNotification('Please select information type', 'warning');
-                return;
-            }
-            
-            const typingIndicator = document.getElementById('typingIndicator');
-            typingIndicator.style.display = 'block';
-            
-            setTimeout(() => {
-                const response = generateDropdownAIResponse(healthCategory, infoType);
-                addMessageToChat(response, 'ai');
-                typingIndicator.style.display = 'none';
-            }, 1500);
-        }
+        async function getAIAdviceFromDropdowns() {
+    const healthCategory = document.getElementById('healthCategory').value;
+    const infoType = document.getElementById('infoType').value;
+    
+    if (!healthCategory) {
+        showNotification('Please select a health category', 'warning');
+        return;
+    }
+    
+    if (!infoType) {
+        showNotification('Please select information type', 'warning');
+        return;
+    }
+    
+    const typingIndicator = document.getElementById('typingIndicator');
+    typingIndicator.style.display = 'block';
+    
+    try {
+        // Create prompt from dropdown selections
+        const categoryName = getCategoryName(healthCategory, currentLanguage);
+        const prompt = `Provide ${infoType} information about ${categoryName} in ${currentLanguage} language for health education.`;
+        
+        const response = await getAIResponse(prompt);
+        addMessageToChat(response, 'ai');
+        
+    } catch (error) {
+        addMessageToChat("I'm sorry, I'm having trouble responding right now. Please try again later.", 'ai');
+    } finally {
+        typingIndicator.style.display = 'none';
+    }
+}
 
         function generateDropdownAIResponse(category, infoType) {
             const data = healthKnowledgeBase[category];
@@ -3911,12 +3919,45 @@ function initializeTelegramWidget() {
         }
 
         async function getAIResponse(message) {
-            // Simulate API call delay
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // Generate AI response based on user message and current language
-            return generateAIResponse(message, currentLanguage);
+    try {
+        const HF_API_KEY = "hf__hpsC"; // သင့် token ဒီမှာထည့်
+        const HF_API_URL = "https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium";
+        
+        // Show typing indicator
+        document.getElementById('typingIndicator').style.display = 'block';
+        
+        const response = await fetch(HF_API_URL, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${HF_API_KEY}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                inputs: message,
+                parameters: {
+                    max_length: 500,
+                    temperature: 0.7
+                }
+            })
+        });
+        
+        const data = await response.json();
+        
+        // Hide typing indicator
+        document.getElementById('typingIndicator').style.display = 'none';
+        
+        if (data && data[0] && data[0].generated_text) {
+            return data[0].generated_text;
+        } else {
+            return "I'm sorry, I couldn't generate a response. Please try again.";
         }
+        
+    } catch (error) {
+        console.error('AI API Error:', error);
+        document.getElementById('typingIndicator').style.display = 'none';
+        return "I'm having trouble connecting to the AI service. Please check your internet connection and try again.";
+    }
+}
 
         function addMessageToChat(message, sender) {
             const chatMessages = document.getElementById('chatMessages');
