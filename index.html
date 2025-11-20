@@ -2457,7 +2457,43 @@
                 }
             ]
         };
+// ===== DEEPSEEK AI INTEGRATION =====
+const DEEPSEEK_API_KEY = "sk-a19587cda7be491bbeec6ad0106bbfda";
+const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
 
+// Real AI Health Advisor Function
+async function getDeepSeekHealthAdvice(userMessage) {
+    try {
+        const response = await fetch(DEEPSEEK_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "deepseek-chat",
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are a professional health advisor. Provide helpful health advice in simple language. Always remind to consult doctors for serious issues."
+                    },
+                    {
+                        role: "user", 
+                        content: userMessage
+                    }
+                ],
+                max_tokens: 500,
+                temperature: 0.7
+            })
+        });
+
+        const data = await response.json();
+        return data.choices[0].message.content;
+    } catch (error) {
+        console.error('DeepSeek API Error:', error);
+        return "I'm having trouble connecting right now. Please try again later.";
+    }
+}
         // ===== ENHANCED AI KNOWLEDGE BASE =====
         const healthKnowledgeBase = {
             // နှလုံးရောဂါများ
@@ -3995,29 +4031,29 @@ function initializeTelegramWidget() {
         }
 
         async function sendMessage() {
-            const chatInput = document.getElementById('chatInput');
-            const message = chatInput.value.trim();
-            
-            if (message === '') return;
-            
-            // Add user message
-            addMessageToChat(message, 'user');
-            chatInput.value = '';
-            
-            // Show typing indicator
-            const typingIndicator = document.getElementById('typingIndicator');
-            typingIndicator.style.display = 'block';
-            
-            try {
-                // Simulate AI response with API call
-                const response = await getAIResponse(message);
-                addMessageToChat(response, 'ai');
-            } catch (error) {
-                addMessageToChat("I'm sorry, I'm having trouble responding right now. Please try again later.", 'ai');
-            } finally {
-                typingIndicator.style.display = 'none';
-            }
-        }
+    const chatInput = document.getElementById('chatInput');
+    const message = chatInput.value.trim();
+    
+    if (message === '') return;
+    
+    // Add user message
+    addMessageToChat(message, 'user');
+    chatInput.value = '';
+    
+    // Show typing indicator
+    const typingIndicator = document.getElementById('typingIndicator');
+    typingIndicator.style.display = 'block';
+    
+    try {
+        // Real AI response
+        const response = await getDeepSeekHealthAdvice(message);
+        addMessageToChat(response, 'ai');
+    } catch (error) {
+        addMessageToChat("I'm sorry, I'm having trouble responding right now. Please try again later.", 'ai');
+    } finally {
+        typingIndicator.style.display = 'none';
+    }
+}
 
         async function getAIResponse(message) {
     try {
