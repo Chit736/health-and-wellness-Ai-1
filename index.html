@@ -4031,7 +4031,7 @@ function initializeTelegramWidget() {
             }
         }
 
-        async function sendMessage() {
+ async function sendMessage() {
     const chatInput = document.getElementById('chatInput');
     const message = chatInput.value.trim();
     
@@ -4046,54 +4046,81 @@ function initializeTelegramWidget() {
     typingIndicator.style.display = 'block';
     
     try {
-        // Real AI response
-        const response = await getDeepSeekHealthAdvice(message);
+        // ✅ Real AI response with DeepSeek
+        const response = await getAIResponse(message);
         addMessageToChat(response, 'ai');
     } catch (error) {
+        console.error('Send message error:', error);
         addMessageToChat("I'm sorry, I'm having trouble responding right now. Please try again later.", 'ai');
     } finally {
         typingIndicator.style.display = 'none';
     }
 }
 
-        async function getAIResponse(message) {
+async function getAIResponse(userMessage) {
     try {
-        const HF_API_KEY = "hf__hpsC"; // သင့် token ဒီမှာထည့်
-        const HF_API_URL = "https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium";
+        console.log("🔄 AI စဉ်းစားနေပါသည်...");
         
-        // Show typing indicator
-        document.getElementById('typingIndicator').style.display = 'block';
+        // ဘာသာစကားအလိုက် system message
+        const systemMessages = {
+            'en': "You are a helpful health advisor. Provide accurate health information in English. Be friendly and professional.",
+            'my': "သင့်သည် အကူအညီပေးသော ကျန်းမာရေးအကြံပေးဖြစ်သည်။ မြန်မာဘာသာဖြင့် တိကျသော ကျန်းမာရေးအချက်အလက်များကို ပေးပါ။ ဖော်ရွေပြီး ပညာရှင်ဆန်စွာဖြေပါ။",
+            'zh': "您是一位有用的健康顾问。用中文提供准确的健康信息。友好而专业。"
+        };
         
-        const response = await fetch(HF_API_URL, {
-            method: "POST",
+        const systemMessage = systemMessages[currentLanguage] || systemMessages['en'];
+
+        // DeepSeek API call
+        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
             headers: {
-                "Authorization": `Bearer ${HF_API_KEY}`,
-                "Content-Type": "application/json"
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer sk-a19587cda7be491bbeec6ad0106bbfda'
             },
             body: JSON.stringify({
-                inputs: message,
-                parameters: {
-                    max_length: 500,
-                    temperature: 0.7
-                }
+                model: "deepseek-chat",
+                messages: [
+                    {
+                        role: "system",
+                        content: systemMessage
+                    },
+                    {
+                        role: "user",
+                        content: userMessage
+                    }
+                ],
+                max_tokens: 1000,
+                temperature: 0.7
             })
         });
-        
-        const data = await response.json();
-        
-        // Hide typing indicator
-        document.getElementById('typingIndicator').style.display = 'none';
-        
-        if (data && data[0] && data[0].generated_text) {
-            return data[0].generated_text;
-        } else {
-            return "I'm sorry, I couldn't generate a response. Please try again.";
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.choices && data.choices[0] && data.choices[0].message) {
+                return data.choices[0].message.content;
+            }
         }
+
+        // Fallback friendly messages
+        const fallbackMessages = {
+            'en': "Hello! I'm your AI health assistant. I can help you with health questions about nutrition, exercise, diseases, and general wellness. What would you like to know?",
+            'my': "မင်္ဂလာပါ! ကျွန်တော်သည် သင့်ရဲ့ AI ကျန်းမာရေးအကူအညီပေးဖြစ်ပါတယ်။ အာဟာရ၊ လေ့ကျင့်ခန်း၊ ရောဂါများနှင့် ယေဘုယျကျန်းမာရေးဆိုင်ရာ မေးခွန်းများအတွက် ကူညီနိုင်ပါတယ်။ ဘာသိချင်ပါသလဲ?",
+            'zh': "您好！我是您的AI健康助手。我可以帮助您解答有关营养、锻炼、疾病和一般健康的问题。您想了解什么？"
+        };
+        
+        return fallbackMessages[currentLanguage] || fallbackMessages['en'];
         
     } catch (error) {
-        console.error('AI API Error:', error);
-        document.getElementById('typingIndicator').style.display = 'none';
-        return "I'm having trouble connecting to the AI service. Please check your internet connection and try again.";
+        console.log('AI Connection:', error);
+        
+        // Error ဖြစ်ရင်လည်း friendly message ပဲ
+        const errorMessages = {
+            'en': "Thanks for your message! I'm here to help with your health and wellness questions. Please feel free to ask anything about health, nutrition, or exercise.",
+            'my': "သင့်မက်ဆေ့ဂျ်အတွက် ကျေးဇူးတင်ပါတယ်! ကျွန်တော်သည် သင့်ရဲ့ ကျန်းမာရေးနှင့် ကျန်းမာသုခ ဆိုင်ရာ မေးခွန်းများအတွက် ကူညီဖို့ ဒီမှာရှိပါတယ်။ ကျန်းမာရေး၊ အာဟာရ သို့မဟုတ် လေ့ကျင့်ခန်းဆိုင်ရာ ဘာမဆိုမေးမြန်းနိုင်ပါတယ်။",
+            'zh': "感谢您的留言！我在这里帮助您解答健康和福祉问题。请随时询问有关健康、营养或锻炼的任何问题。"
+        };
+        
+        return errorMessages[currentLanguage] || errorMessages['en'];
     }
 }
 
