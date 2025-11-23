@@ -2458,42 +2458,40 @@
             ]
         };
 // ===== DEEPSEEK AI INTEGRATION =====
-const DEEPSEEK_API_KEY = "sk-a19587cda7be491bbeec6ad0106bbfda";
-const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
+const API_BASE_URL = 'http://localhost:3000/api'; // Development
+// const API_BASE_URL = 'https://your-domain.com/api'; // Production
 
 // Real AI Health Advisor Function
 async function getDeepSeekHealthAdvice(userMessage) {
+    async function getSecureAIResponse(message, language = 'en') {
     try {
-        const response = await fetch(DEEPSEEK_API_URL, {
+        const response = await fetch(`${API_BASE_URL}/chat`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
             },
-            body: JSON.stringify({
-                model: "deepseek-chat",
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are a professional health advisor. Provide helpful health advice in simple language. Always remind to consult doctors for serious issues."
-                    },
-                    {
-                        role: "user", 
-                        content: userMessage
-                    }
-                ],
-                max_tokens: 500,
-                temperature: 0.7
+            body: JSON.stringify({ 
+                message: message,
+                language: language 
             })
         });
 
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+        }
+
         const data = await response.json();
-        return data.choices[0].message.content;
+        
+        if (data.success) {
+            return data.reply;
+        } else {
+            throw new Error(data.error || 'AI service error');
+        }
+        
     } catch (error) {
-        console.error('DeepSeek API Error:', error);
-        return "I'm having trouble connecting right now. Please try again later.";
+        console.error('Secure AI Response Error:', error);
+        return "I'm having trouble connecting to the AI service. Please try again later.";
     }
-}
         // ===== ENHANCED AI KNOWLEDGE BASE =====
         const healthKnowledgeBase = {
             // နှလုံးရောဂါများ
@@ -2657,16 +2655,34 @@ async function getDeepSeekHealthAdvice(userMessage) {
             },
             
             async syncData() {
-                if (!this.isConnected) return;
-                
-                try {
-                    // Simulate data sync from smart watch
-                    const mockData = {
-                        steps: Math.floor(Math.random() * 2000) + 6000,
-                        heartRate: Math.floor(Math.random() * 30) + 60,
-                        sleep: (Math.random() * 2 + 6).toFixed(1),
-                        calories: Math.floor(Math.random() * 500) + 1500
-                    };
+              
+    if (!this.isConnected) return;
+    
+    try {
+        showLoading(true);
+        
+        const response = await fetch(`${API_BASE_URL}/health-data?userId=${currentUser?.id || 'demo'}`);
+        
+        if (!response.ok) throw new Error('Sync failed');
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Update dashboard with real data
+            document.getElementById('stepsCount').textContent = data.data.steps.toLocaleString();
+            document.getElementById('heartRate').textContent = data.data.heartRate;
+            document.getElementById('sleepHours').textContent = data.data.sleepHours;
+            document.getElementById('caloriesCount').textContent = data.data.caloriesBurned.toLocaleString();
+            
+            showNotification('Health data synced successfully', 'success');
+        }
+        
+    } catch (error) {
+        showNotification('Sync failed: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
                     
                     // Update dashboard
                     document.getElementById('stepsCount').textContent = mockData.steps.toLocaleString();
@@ -2719,41 +2735,82 @@ async function getDeepSeekHealthAdvice(userMessage) {
         };
 
         // ===== REAL PAYMENT INTEGRATION =====
-        const paymentIntegration = {
-            // KBZ Pay Integration
-            async processKBZPay(amount, description) {
-                try {
-                    showLoading(true);
-                    
-                    // Simulate KBZ Pay API call
-                    await new Promise(resolve => setTimeout(resolve, 3000));
-                    
-                    // In real implementation, this would integrate with KBZ Pay API
-                    const paymentData = {
-                        phone: '09897032297',
-                        amount: amount,
-                        description: description,
-                        transactionId: 'KBZ' + Date.now()
-                    };
-                    
-                    showNotification(`Payment request sent to KBZ Pay (09897032297)`, 'success');
-                    
-                    // Simulate successful payment
-                    setTimeout(() => {
-                        showNotification('Payment completed successfully!', 'success');
-                        if (currentUser) {
-                            currentUser.subscription = 'premium';
-                            localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                        }
-                    }, 2000);
-                    
-                } catch (error) {
-                    showNotification('KBZ Pay payment failed: ' + error.message, 'error');
-                } finally {
-                    showLoading(false);
-                    hidePaymentModal();
+        const securePayment = {
+    async processKBZPay(amount, description) {
+        try {
+            showLoading(true);
+            
+            const response = await fetch(`${API_BASE_URL}/payment/kbz-pay`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    amount: amount,
+                    phone: '09897032297', // User's phone from profile
+                    description: description
+                })
+            });
+
+            if (!response.ok) throw new Error('Payment failed');
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showNotification('Payment completed successfully!', 'success');
+                // Update user subscription
+                if (currentUser) {
+                    currentUser.subscription = 'premium';
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
                 }
-            },
+            } else {
+                throw new Error(data.error || 'Payment failed');
+            }
+            
+        } catch (error) {
+            showNotification('Payment failed: ' + error.message, 'error');
+        } finally {
+            showLoading(false);
+            hidePaymentModal();
+        }
+    },
+
+    async processWavePay(amount, description) {
+        try {
+            showLoading(true);
+            
+            const response = await fetch(`${API_BASE_URL}/payment/wave-money`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    amount: amount,
+                    phone: '09897032297',
+                    description: description
+                })
+            });
+
+            if (!response.ok) throw new Error('Payment failed');
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showNotification('Payment completed successfully!', 'success');
+                if (currentUser) {
+                    currentUser.subscription = 'premium';
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                }
+            }
+            
+        } catch (error) {
+            showNotification('Payment failed: ' + error.message, 'error');
+        } finally {
+            showLoading(false);
+            hidePaymentModal();
+        }
+    }
+};
             
             // Wave Money Integration
             async processWavePay(amount, description) {
@@ -3693,26 +3750,50 @@ function initializeTelegramWidget() {
         }
 
         async function loginUser(email, password) {
-            if (!validateLoginForm()) return;
+    if (!validateLoginForm()) return;
 
-            showLoading(true);
+    showLoading(true);
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: email,
+                password: password
+            })
+        });
+
+        if (!response.ok) throw new Error('Login failed');
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            currentUser = data.user;
             
-            try {
-                // Simulate API call
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                
-                currentUser = {
-                    name: email.split('@')[0],
-                    email: email,
-                    subscription: 'premium'
-                };
-                
-                document.getElementById('loginButton').style.display = 'none';
-                document.getElementById('profileButton').style.display = 'flex';
-                document.getElementById('userNameDisplay').textContent = currentUser.name;
-                
-                hideLoginModal();
-                showNotification('Login successful! Welcome back!', 'success');
+            document.getElementById('loginButton').style.display = 'none';
+            document.getElementById('profileButton').style.display = 'flex';
+            document.getElementById('userNameDisplay').textContent = currentUser.name;
+            
+            hideLoginModal();
+            showNotification('Login successful! Welcome back!', 'success');
+            
+            // Save to localStorage
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            localStorage.setItem('authToken', data.token);
+            
+        } else {
+            throw new Error(data.error || 'Login failed');
+        }
+        
+    } catch (error) {
+        showNotification('Login failed: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
                 
                 // Save to localStorage
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
@@ -3851,80 +3932,100 @@ function initializeTelegramWidget() {
             uploadArea.style.display = 'none';
         }
 
-        async function analyzeFood() {
-            const analyzeBtn = document.getElementById('analyzeBtn');
-            const originalText = analyzeBtn.innerHTML;
-            
-            // Show loading
-            analyzeBtn.innerHTML = '<div class="spinner"></div> Analyzing...';
-            analyzeBtn.disabled = true;
-            
-            try {
-                // Simulate AI analysis with API call
-                await new Promise(resolve => setTimeout(resolve, 3000));
-                
-                // Mock analysis results
-                const analysisResults = document.getElementById('analysisResults');
-                const nutritionFacts = document.getElementById('nutritionFacts');
-                const nutritionGrid = document.getElementById('nutritionGrid');
-                
-                analysisResults.innerHTML = `
-                    <div style="text-align: center;">
-                        <div class="food-rating">
-                            <i class="fas fa-star rating-star filled"></i>
-                            <i class="fas fa-star rating-star filled"></i>
-                            <i class="fas fa-star rating-star filled"></i>
-                            <i class="fas fa-star rating-star filled"></i>
-                            <i class="fas fa-star rating-star"></i>
-                        </div>
-                        <h3 style="color: var(--primary); margin: 0.8rem 0;">Health Rating: 4/5</h3>
-                        <p style="margin-bottom: 1.2rem;">This meal appears to be well-balanced with good nutritional value.</p>
-                        <div style="background: var(--gray-light); padding: 1.2rem; border-radius: 6px;">
-                            <h4 style="margin-bottom: 0.8rem;">Recommendations:</h4>
-                            <ul style="text-align: left; list-style-type: none;">
-                                <li style="margin-bottom: 0.4rem;"><i class="fas fa-check" style="color: var(--success);"></i> Good protein content for muscle maintenance</li>
-                                <li style="margin-bottom: 0.4rem;"><i class="fas fa-check" style="color: var(--success);"></i> Contains healthy fats and fiber</li>
-                                <li style="margin-bottom: 0.4rem;"><i class="fas fa-check" style="color: var(--success);"></i> Consider adding more colorful vegetables</li>
-                            </ul>
-                        </div>
-                    </div>
-                `;
-                
-                nutritionGrid.innerHTML = `
-                    <div class="nutrition-item">
-                        <div class="nutrition-value">450</div>
-                        <div class="nutrition-label">Calories</div>
-                    </div>
-                    <div class="nutrition-item">
-                        <div class="nutrition-value">25g</div>
-                        <div class="nutrition-label">Protein</div>
-                    </div>
-                    <div class="nutrition-item">
-                        <div class="nutrition-value">40g</div>
-                        <div class="nutrition-label">Carbs</div>
-                    </div>
-                    <div class="nutrition-item">
-                        <div class="nutrition-value">18g</div>
-                        <div class="nutrition-label">Fat</div>
-                    </div>
-                    <div class="nutrition-item">
-                        <div class="nutrition-value">8g</div>
-                        <div class="nutrition-label">Fiber</div>
-                    </div>
-                `;
-                
-                nutritionFacts.style.display = 'block';
-                
-                showNotification('Food analysis completed!', 'success');
-            } catch (error) {
-                showNotification('Analysis failed: ' + error.message, 'error');
-            } finally {
-                // Reset button
-                analyzeBtn.innerHTML = originalText;
-                analyzeBtn.disabled = false;
-            }
-        }
+       async function analyzeFood() {
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const originalText = analyzeBtn.innerHTML;
+    
+    // Show loading
+    analyzeBtn.innerHTML = '<div class="spinner"></div> Analyzing...';
+    analyzeBtn.disabled = true;
+    
+    try {
+        const previewImg = document.getElementById('previewImg');
+        const imageBase64 = previewImg.src; // Get base64 image data
+        
+        const response = await fetch(`${API_BASE_URL}/analyze-food`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                imageBase64: imageBase64,
+                foodName: 'Uploaded Food'
+            })
+        });
 
+        if (!response.ok) throw new Error('Analysis failed');
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displayFoodAnalysisResults(data.analysis);
+            showNotification('Food analysis completed!', 'success');
+        } else {
+            throw new Error(data.error || 'Analysis failed');
+        }
+        
+    } catch (error) {
+        showNotification('Analysis failed: ' + error.message, 'error');
+    } finally {
+        // Reset button
+        analyzeBtn.innerHTML = originalText;
+        analyzeBtn.disabled = false;
+    }
+}
+
+// New function to display analysis results
+function displayFoodAnalysisResults(analysis) {
+    const analysisResults = document.getElementById('analysisResults');
+    const nutritionFacts = document.getElementById('nutritionFacts');
+    const nutritionGrid = document.getElementById('nutritionGrid');
+    
+    analysisResults.innerHTML = `
+        <div style="text-align: center;">
+            <div class="food-rating">
+                ${Array.from({length: 10}, (_, i) => 
+                    `<i class="fas fa-star rating-star ${i < analysis.healthScore ? 'filled' : ''}"></i>`
+                ).join('')}
+            </div>
+            <h3 style="color: var(--primary); margin: 0.8rem 0;">Health Rating: ${analysis.healthScore}/10</h3>
+            <p style="margin-bottom: 1.2rem;">Analysis for: ${analysis.foodName}</p>
+            <div style="background: var(--gray-light); padding: 1.2rem; border-radius: 6px;">
+                <h4 style="margin-bottom: 0.8rem;">Recommendations:</h4>
+                <ul style="text-align: left; list-style-type: none;">
+                    ${analysis.recommendations.map(rec => 
+                        `<li style="margin-bottom: 0.4rem;"><i class="fas fa-check" style="color: var(--success);"></i> ${rec}</li>`
+                    ).join('')}
+                </ul>
+            </div>
+        </div>
+    `;
+    
+    nutritionGrid.innerHTML = `
+        <div class="nutrition-item">
+            <div class="nutrition-value">${analysis.calories}</div>
+            <div class="nutrition-label">Calories</div>
+        </div>
+        <div class="nutrition-item">
+            <div class="nutrition-value">${analysis.protein}g</div>
+            <div class="nutrition-label">Protein</div>
+        </div>
+        <div class="nutrition-item">
+            <div class="nutrition-value">${analysis.carbs}g</div>
+            <div class="nutrition-label">Carbs</div>
+        </div>
+        <div class="nutrition-item">
+            <div class="nutrition-value">${analysis.fat}g</div>
+            <div class="nutrition-label">Fat</div>
+        </div>
+        <div class="nutrition-item">
+            <div class="nutrition-value">${analysis.fiber}g</div>
+            <div class="nutrition-label">Fiber</div>
+        </div>
+    `;
+    
+    nutritionFacts.style.display = 'block';
+}
         // ===== AI CHAT FUNCTIONS =====
         function initializeChat() {
             // Ensure chat is cleared and ready
@@ -3938,9 +4039,57 @@ function initializeTelegramWidget() {
         }
 
         // NEW AI DROPDOWN FUNCTIONS
-        async function getAIAdviceFromDropdowns() {
+       async function getAIAdviceFromDropdowns() {
     const healthCategory = document.getElementById('healthCategory').value;
     const infoType = document.getElementById('infoType').value;
+    
+    if (!healthCategory) {
+        showNotification('Please select a health category', 'warning');
+        return;
+    }
+    
+    if (!infoType) {
+        showNotification('Please select information type', 'warning');
+        return;
+    }
+    
+    const typingIndicator = document.getElementById('typingIndicator');
+    typingIndicator.style.display = 'block';
+    
+    try {
+        // Create prompt from dropdown selections
+        const categoryName = getCategoryName(healthCategory, currentLanguage);
+        const infoTypeName = getInfoTypeName(infoType, currentLanguage);
+        
+        const prompt = `${currentLanguage === 'my' ? 
+            `${categoryName} နဲ့ပတ်သက်ပြီး ${infoTypeName} အချက်အလက်များရှင်းပြပေးပါ` :
+            currentLanguage === 'zh' ?
+            `请提供关于${categoryName}的${infoTypeName}信息` :
+            `Provide ${infoTypeName} about ${categoryName} for health education`
+        }`;
+        
+        const response = await getSecureAIResponse(prompt, currentLanguage);
+        addMessageToChat(response, 'ai');
+        
+    } catch (error) {
+        addMessageToChat("I'm sorry, I'm having trouble responding right now. Please try again later.", 'ai');
+    } finally {
+        typingIndicator.style.display = 'none';
+    }
+}
+
+// Helper function for info type names
+function getInfoTypeName(infoType, language) {
+    const infoTypes = {
+        'symptoms': { 'en': 'symptoms', 'my': 'လက္ခဏာများ', 'zh': '症状' },
+        'causes': { 'en': 'causes', 'my': 'အကြောင်းရင်းများ', 'zh': '原因' },
+        'prevention': { 'en': 'prevention methods', 'my': 'ကာကွယ်နည်းများ', 'zh': '预防方法' },
+        'foods': { 'en': 'food recommendations', 'my': 'အစားအစာအကြံပြုချက်များ', 'zh': '食物推荐' },
+        'all': { 'en': 'complete information', 'my': 'အပြည့်အစုံအချက်အလက်များ', 'zh': '完整信息' }
+    };
+    
+    return infoTypes[infoType]?.[language] || infoTypes[infoType]?.['en'] || infoType;
+}
     
     if (!healthCategory) {
         showNotification('Please select a health category', 'warning');
@@ -4045,8 +4194,8 @@ function initializeTelegramWidget() {
     typingIndicator.style.display = 'block';
     
     try {
-        // Real AI response
-        const response = await getDeepSeekHealthAdvice(message);
+        // Secure API call
+        const response = await getSecureAIResponse(message, currentLanguage);
         addMessageToChat(response, 'ai');
     } catch (error) {
         addMessageToChat("I'm sorry, I'm having trouble responding right now. Please try again later.", 'ai');
