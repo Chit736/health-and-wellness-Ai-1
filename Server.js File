@@ -1,0 +1,481 @@
+// server.js - Health & Wellness Global Backend API
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+require('dotenv').config();
+
+const app = express();
+
+// ===== MIDDLEWARE SETUP =====
+app.use(cors({
+    origin: ['http://localhost:3000', 'http://127.0.0.1:5500', 'https://your-domain.com'],
+    credentials: true
+}));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// Serve static files (if needed)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ===== SECURITY MIDDLEWARE =====
+app.use((req, res, next) => {
+    // Basic security headers
+    res.header('X-Content-Type-Options', 'nosniff');
+    res.header('X-Frame-Options', 'DENY');
+    res.header('X-XSS-Protection', '1; mode=block');
+    next();
+});
+
+// ===== RATE LIMITING =====
+const rateLimit = require('express-rate-limit');
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: {
+        error: 'Too many requests from this IP, please try again later.'
+    }
+});
+app.use('/api/', limiter);
+
+// ===== HEALTH CHECK =====
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'OK',
+        message: 'Health & Wellness Global API is running',
+        timestamp: new Date().toISOString(),
+        version: '1.0.0'
+    });
+});
+
+// ===== AI CHAT ENDPOINT =====
+app.post('/api/chat', async (req, res) => {
+    try {
+        const { message, language = 'en' } = req.body;
+
+        // Input validation
+        if (!message || message.trim().length === 0) {
+            return res.status(400).json({
+                error: 'Message is required',
+                code: 'MESSAGE_REQUIRED'
+            });
+        }
+
+        if (message.length > 1000) {
+            return res.status(400).json({
+                error: 'Message too long (max 1000 characters)',
+                code: 'MESSAGE_TOO_LONG'
+            });
+        }
+
+        console.log(`AI Chat Request: ${message.substring(0, 50)}...`);
+
+        // DeepSeek AI Integration
+        const deepseekResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "deepseek-chat",
+                messages: [
+                    {
+                        role: "system",
+                        content: `You are a professional health advisor. Provide helpful health advice in ${language} language. 
+                                 Always remind users to consult doctors for serious medical issues.
+                                 Be empathetic, informative, and clear in your responses.`
+                    },
+                    {
+                        role: "user",
+                        content: message
+                    }
+                ],
+                max_tokens: 800,
+                temperature: 0.7,
+                stream: false
+            })
+        });
+
+        if (!deepseekResponse.ok) {
+            const errorData = await deepseekResponse.text();
+            console.error('DeepSeek API Error:', errorData);
+            throw new Error(`AI service error: ${deepseekResponse.status}`);
+        }
+
+        const data = await deepseekResponse.json();
+        
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+            throw new Error('Invalid response from AI service');
+        }
+
+        const aiReply = data.choices[0].message.content;
+
+        // Log successful request (without sensitive data)
+        console.log(`AI Response generated: ${aiReply.substring(0, 50)}...`);
+
+        res.json({
+            success: true,
+            reply: aiReply,
+            usage: data.usage || null
+        });
+
+    } catch (error) {
+        console.error('Chat endpoint error:', error);
+        
+        // User-friendly error messages based on error type
+        let errorMessage = 'Sorry, I am having trouble responding right now.';
+        let statusCode = 500;
+
+        if (error.message.includes('API key') || error.message.includes('authorization')) {
+            errorMessage = 'AI service configuration error. Please contact support.';
+            statusCode = 500;
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+            errorMessage = 'Network error. Please check your internet connection.';
+            statusCode = 503;
+        }
+
+        res.status(statusCode).json({
+            success: false,
+            error: errorMessage,
+            code: 'AI_SERVICE_ERROR'
+        });
+    }
+});
+
+// ===== FOOD ANALYSIS ENDPOINT =====
+app.post('/api/analyze-food', async (req, res) => {
+    try {
+        const { imageBase64, foodName } = req.body;
+
+        if (!imageBase64 && !foodName) {
+            return res.status(400).json({
+                error: 'Either image or food name is required',
+                code: 'INPUT_REQUIRED'
+            });
+        }
+
+        console.log(`Food Analysis Request: ${foodName || 'Image analysis'}`);
+
+        // Simulate food analysis (in real implementation, integrate with food AI API)
+        const mockAnalysis = {
+            foodName: foodName || 'Mixed Food',
+            calories: Math.floor(Math.random() * 500) + 200,
+            protein: (Math.random() * 30 + 10).toFixed(1),
+            carbs: (Math.random() * 50 + 20).toFixed(1),
+            fat: (Math.random() * 20 + 5).toFixed(1),
+            fiber: (Math.random() * 10 + 2).toFixed(1),
+            healthScore: Math.floor(Math.random() * 5) + 5, // 5-10
+            recommendations: [
+                "Good source of protein",
+                "Contains healthy fats",
+                "Consider adding more vegetables"
+            ],
+            nutrients: {
+                vitaminA: "15%",
+                vitaminC: "25%",
+                calcium: "10%",
+                iron: "20%"
+            }
+        };
+
+        // Simulate processing delay
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        res.json({
+            success: true,
+            analysis: mockAnalysis,
+            message: 'Food analysis completed successfully'
+        });
+
+    } catch (error) {
+        console.error('Food analysis error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Food analysis service temporarily unavailable',
+            code: 'FOOD_ANALYSIS_ERROR'
+        });
+    }
+});
+
+// ===== USER AUTHENTICATION ENDPOINTS =====
+
+// User registration
+app.post('/api/register', async (req, res) => {
+    try {
+        const { name, email, phone, password } = req.body;
+
+        // Input validation
+        if (!name || !email || !password) {
+            return res.status(400).json({
+                error: 'Name, email, and password are required',
+                code: 'MISSING_FIELDS'
+            });
+        }
+
+        // Simple email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                error: 'Please enter a valid email address',
+                code: 'INVALID_EMAIL'
+            });
+        }
+
+        // In a real app, you would:
+        // 1. Hash the password
+        // 2. Save to database
+        // 3. Send verification email
+
+        console.log(`User registration: ${email}`);
+
+        // Mock user creation
+        const mockUser = {
+            id: Date.now().toString(),
+            name,
+            email,
+            phone,
+            subscription: 'basic',
+            createdAt: new Date().toISOString()
+        };
+
+        res.status(201).json({
+            success: true,
+            message: 'Registration successful',
+            user: {
+                id: mockUser.id,
+                name: mockUser.name,
+                email: mockUser.email,
+                subscription: mockUser.subscription
+            },
+            token: 'mock-jwt-token-' + Date.now()
+        });
+
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Registration failed. Please try again.',
+            code: 'REGISTRATION_ERROR'
+        });
+    }
+});
+
+// User login
+app.post('/api/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({
+                error: 'Email and password are required',
+                code: 'MISSING_CREDENTIALS'
+            });
+        }
+
+        console.log(`Login attempt: ${email}`);
+
+        // Mock authentication (in real app, check database)
+        const mockUser = {
+            id: 'user123',
+            name: email.split('@')[0],
+            email: email,
+            subscription: 'premium',
+            createdAt: new Date().toISOString()
+        };
+
+        // Mock password check (in real app, use bcrypt)
+        if (password.length < 6) {
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid credentials',
+                code: 'INVALID_CREDENTIALS'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Login successful',
+            user: {
+                id: mockUser.id,
+                name: mockUser.name,
+                email: mockUser.email,
+                subscription: mockUser.subscription
+            },
+            token: 'mock-jwt-token-' + Date.now()
+        });
+
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Login failed. Please try again.',
+            code: 'LOGIN_ERROR'
+        });
+    }
+});
+
+// ===== PAYMENT ENDPOINTS =====
+app.post('/api/payment/kbz-pay', async (req, res) => {
+    try {
+        const { amount, phone, description } = req.body;
+
+        if (!amount || !phone) {
+            return res.status(400).json({
+                error: 'Amount and phone number are required',
+                code: 'MISSING_PAYMENT_DETAILS'
+            });
+        }
+
+        console.log(`KBZ Pay payment request: ${amount} MMK for ${phone}`);
+
+        // Simulate KBZ Pay API call
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        const mockTransaction = {
+            transactionId: 'KBZ' + Date.now(),
+            amount: amount,
+            phone: phone,
+            status: 'completed',
+            timestamp: new Date().toISOString(),
+            description: description || 'Health & Wellness Subscription'
+        };
+
+        res.json({
+            success: true,
+            message: 'Payment processed successfully',
+            transaction: mockTransaction
+        });
+
+    } catch (error) {
+        console.error('KBZ Pay error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Payment processing failed',
+            code: 'PAYMENT_ERROR'
+        });
+    }
+});
+
+app.post('/api/payment/wave-money', async (req, res) => {
+    try {
+        const { amount, phone, description } = req.body;
+
+        console.log(`Wave Money payment request: ${amount} MMK for ${phone}`);
+
+        // Simulate Wave Money API call
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        const mockTransaction = {
+            transactionId: 'WAVE' + Date.now(),
+            amount: amount,
+            phone: phone,
+            status: 'completed',
+            timestamp: new Date().toISOString(),
+            description: description || 'Health & Wellness Subscription'
+        };
+
+        res.json({
+            success: true,
+            message: 'Payment processed successfully',
+            transaction: mockTransaction
+        });
+
+    } catch (error) {
+        console.error('Wave Money error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Payment processing failed',
+            code: 'PAYMENT_ERROR'
+        });
+    }
+});
+
+// ===== SMART WATCH DATA ENDPOINT =====
+app.get('/api/health-data', async (req, res) => {
+    try {
+        const { userId, date } = req.query;
+
+        console.log(`Health data request for user: ${userId}`);
+
+        // Mock health data
+        const healthData = {
+            steps: Math.floor(Math.random() * 5000) + 5000,
+            heartRate: Math.floor(Math.random() * 40) + 60,
+            sleepHours: (Math.random() * 3 + 6).toFixed(1),
+            caloriesBurned: Math.floor(Math.random() * 800) + 1200,
+            distance: (Math.random() * 5 + 3).toFixed(1),
+            date: date || new Date().toISOString().split('T')[0]
+        };
+
+        res.json({
+            success: true,
+            data: healthData,
+            message: 'Health data retrieved successfully'
+        });
+
+    } catch (error) {
+        console.error('Health data error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to retrieve health data',
+            code: 'HEALTH_DATA_ERROR'
+        });
+    }
+});
+
+// ===== ERROR HANDLING =====
+
+// 404 handler for undefined routes
+app.use('/api/*', (req, res) => {
+    res.status(404).json({
+        success: false,
+        error: `API endpoint ${req.originalUrl} not found`,
+        code: 'ENDPOINT_NOT_FOUND'
+    });
+});
+
+// Global error handler
+app.use((error, req, res, next) => {
+    console.error('Global error handler:', error);
+    res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        code: 'INTERNAL_SERVER_ERROR'
+    });
+});
+
+// ===== SERVER STARTUP =====
+const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || 'localhost';
+
+// Check for required environment variables
+const requiredEnvVars = ['DEEPSEEK_API_KEY'];
+const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingEnvVars.length > 0) {
+    console.error('❌ Missing required environment variables:', missingEnvVars);
+    console.error('Please check your .env file');
+    process.exit(1);
+}
+
+app.listen(PORT, HOST, () => {
+    console.log('🚀 Health & Wellness Global Backend Server Started!');
+    console.log(`📍 Server running at: http://${HOST}:${PORT}`);
+    console.log(`📊 Health Check: http://${HOST}:${PORT}/api/health`);
+    console.log(`🤖 AI Chat API: http://${HOST}:${PORT}/api/chat`);
+    console.log('🔐 Environment:', process.env.NODE_ENV || 'development');
+    console.log('⏰ Server started at:', new Date().toISOString());
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    console.log('SIGINT received, shutting down gracefully');
+    process.exit(0);
+});
+
+module.exports = app;
