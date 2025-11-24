@@ -2458,12 +2458,19 @@
             ]
         };
 // ===== DEEPSEEK AI INTEGRATION =====
-const API_BASE_URL = 'http://localhost:3000/api'; // Development
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:3000/api' 
+    : 'https://your-backend-domain.com/api'; // Development
 // const API_BASE_URL = 'https://your-domain.com/api'; // Production
 
 // Real AI Health Advisor Function
-async function getDeepSeekHealthAdvice(userMessage) {
-    async function getSecureAIResponse(message, language = 'en') {
+// ===== DEEPSEEK AI INTEGRATION =====
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:3000/api' 
+    : 'https://your-backend-domain.com/api'; // Development
+
+// Real AI Health Advisor Function
+async function getSecureAIResponse(message, language = 'en') {
     try {
         const response = await fetch(`${API_BASE_URL}/chat`, {
             method: 'POST',
@@ -2492,6 +2499,8 @@ async function getDeepSeekHealthAdvice(userMessage) {
         console.error('Secure AI Response Error:', error);
         return "I'm having trouble connecting to the AI service. Please try again later.";
     }
+}
+
         // ===== ENHANCED AI KNOWLEDGE BASE =====
         const healthKnowledgeBase = {
             // နှလုံးရောဂါများ
